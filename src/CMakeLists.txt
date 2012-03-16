@@ -1,6 +1,6 @@
 rock_library(quater_ukf
-    SOURCES Dummy.cpp
-    HEADERS Dummy.hpp)
+    SOURCES ukf.cpp
+    HEADERS ukf.hpp)
 
 rock_executable(quater_ukf_bin Main.cpp
     DEPS quater_ukf)
