@@ -1,7 +1,11 @@
+/**\file ukf.hpp
+ * Header function file and defines
+ */
 #ifndef _FILTER_UKF_HPP_
 #define _FILTER_UKF_HPP_
 
 #include <iostream>
+#include <Eigen/Geometry> /**< Eigen data type for Matrix, Quaternion, etc... */
 
 namespace filter
 {
@@ -17,8 +21,9 @@ namespace filter
     #endif
 
     /** IKF constant parameters **/
-    #define STATEVECTORSIZE 9 /**< Number of variables of the vector state-space representation **/
+    #define STATEVECTORSIZE 6 /**< Number of variables of the vector state-space representation **/
     #define QUATERSIZE 4 /**< Number of parameters of a quaternion **/
+    #define SIGPOINTSIZE (2*STATEVECTORSIZE) + 1 /**< Number of Sigma Points **/
 
     #ifndef PI
     #define PI 3.141592653589793238462643383279502884197169399375105820974944592307816406286 /**< Pi Number */
@@ -61,6 +66,30 @@ namespace filter
   
     class ukf
     {
+	
+	/**
+	 * Filters members
+	 **/
+	private:
+	    double f, a, lambda; /**< Parameters for the Unscented KF  */
+	    Eigen::Matrix <double,STATEVECTORSIZE,1> x; /**< State vector */
+	    Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
+	    Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Px; /**< State covariance matrix */
+	    Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
+	    Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	    Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
+	    Eigen::Matrix <double,STATEVECTORSIZE, SIGPOINTSIZE> sig_point; /**< Sigma points for SPKF */
+	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
+	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> sig_q; /**< Sigma point quaternions */
+	    Eigen::Matrix <double,NUMAXIS, SIGPOINTSIZE> gamma; /**< Observation in the model */
+	    Eigen::Matrix <double,NUMAXIS, 1> z_e; /**<Predictive observation */ 
+	    Eigen::Matrix <double,NUMAXIS, 1> z_r; /**<Measurement of the observation */
+	    Eigen::Matrix <double,NUMAXIS, 1> Nu; /**< Innovation */
+	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pzz; /** Output covariance matrix */
+	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pnu; /** Innovation covariance matrix */
+	    Eigen::Matrix <double,STATEVECTORSIZE, NUMAXIS> Pxz; /** Cross-correlation matrix */
+	    Eigen::Matrix <double,STATEVECTORSIZE, NUMAXIS> K; /**< Kalman Gain sometimes also called W */
+	
 	public: 
 	    
 	    
@@ -133,11 +162,81 @@ namespace filter
 	    *
 	    */
 	    int setOmega (Eigen::Matrix <double,NUMAXIS,1>  *u);
-      
+
+	    
 	    /**
-	    * Print a welcome to stdout
-	    * \return nothing
+	    * @brief This function initilize the filter
+	    * 
+	    * This method receives the measurement noise matrix of the sensors
+	    * and filter parameters
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in] *x_0 initial state vector
+	    * @param[in] *P_0 initial convariance matrix of the process.
+	    * @param[in] *Q noise covariance matrix of the model
+	    * @param[in] *R noise covariance matrix of the measurement
+	    * @param[in] *a parameter for the UKF
+	    * @param[in] *f parameter for the UKF\
+	    * @param[in] *lambda parameter for the UKF, to define the distance of the sigma point with respect to the mean
+	    *
+	    * @return void
+	    *
 	    */
+	    void Init (Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *P_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R, double a, double f, double lambda, double g);
+	    
+	     /**
+	    * @brief Discrete-time quaternion kinematic equation
+	    * 
+	    * It computes the quaternion kinematics from angular velocity.
+	    * It is the quaternions integration (discrete version)
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param [in,out] *quat the quaternion to propagate
+	    * @param[in] *angvelo pointer to vector with the angular velocity
+	    * @param[in] dt delta time between samples
+	    *
+	    * @return void
+	    *
+	    */
+	    void Omega(Eigen::Quaternion< double >* quat, Eigen::Matrix< double, NUMAXIS , 1  >* angvelo, double dt);
+
+	    
+	    /**
+	    * @brief Performs the prediction step of the filter.
+	    * 
+	    * It computes the sigma point, the error quaternions, the sigma point quaternion form the
+	    * previous error quaternions and the propagation step of the filter
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in] *u pointer to vector with the angular velocity
+	    * @param[in] dt delta time between samples
+	    *
+	    * @return void
+	    *
+	    */
+	    void predict(Eigen::Matrix <double,NUMAXIS,1>  *u, double dt);
+	    
+	    
+	    
+	    /**
+	    * @brief Performs the measurement and correction steps of the filter.
+	    * 
+	    * The UKf measurement step
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in] *u pointer to vector with the angular velocity
+	    * @param[in] dt delta time between samples
+	    *
+	    * @return void
+	    *
+	    */
+	    void update(Eigen::Matrix <double,NUMAXIS,1>  *acc, Eigen::Matrix <double,NUMAXIS,1>  *mag);
+	    
+	
 
     };
 
