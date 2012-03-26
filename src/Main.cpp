@@ -98,6 +98,7 @@ int main(int argc, char** argv)
  			    Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
 	
 	
+	
 	e_q[5] = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX())*
  			    Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
  			    Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ()));
@@ -127,7 +128,9 @@ int main(int argc, char** argv)
 	std::cout << "Enter";
 	std::cin >> i;
 	
-	myukf.update(&v, &v);
+	mivector << 0.00, 0.00, 9.81;
+	
+	myukf.update(&v, &mivector);
 	
 	return 0;
 }

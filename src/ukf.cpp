@@ -263,14 +263,14 @@ namespace filter
 	{
 	    //std::cout<<"M.col:\n"<<M.col(i-1)<<"\n";
 	    sig_point.col(i) = x + M.col(i-1);
-	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+// 	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	for (i=(STATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
 	{
 // 	    std::cout<<"M.col:\n"<<M.col(i-(STATEVECTORSIZE+1))<<"\n";
 	    sig_point.col(i) = x - M.col(i-(STATEVECTORSIZE+1));
-	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+// 	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Calculate Error Quaternion **/
@@ -282,11 +282,11 @@ namespace filter
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
 	    /** Calculate **/
-	    p_sig_point = (sig_point.block<NUMAXIS,NUMAXIS>(0,0)).col(i);
+	    p_sig_point = (sig_point.col(i)).block<NUMAXIS,1>(0,0);
 	    q4 = ((-a * p_sig_point.squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*p_sig_point.squaredNorm()))/(pow(f,2)+p_sig_point.squaredNorm());
 	    vectorq = (1/f)*(a + q4) * p_sig_point;
 	    
-// 	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
+//  	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
 	    
 	    /** Store in the quaternion **/
 	    /** Note the order of the arguments in a quaternion:
@@ -314,12 +314,12 @@ namespace filter
 	for (i=0; i<SIGPOINTSIZE;i++)
 	{
 	    /** The estimated angular velocities are given by substracting the bias **/
-	    u_plus = *u - (sig_point.block<NUMAXIS,NUMAXIS>(3,3)).col(i);
+	    u_plus = *u - (sig_point.col(i)).block<NUMAXIS,1>(3,0);
 	    
 	    /** Attitude quaternion dynamic matrix Omega **/
 	    Omega(&(sig_q[i]), &(u_plus), dt);
 	    
-// 	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
+//  	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	    
 	    /** Store the inverse value of the quaternion when i = 0 **/
 	    if (i==0)
@@ -336,14 +336,14 @@ namespace filter
 	
 	
 	/** Propagate the sigma points **/
-	sig_point.block<NUMAXIS,NUMAXIS>(0,0).col(i) << 0.00, 0.00, 0.00;
+	sig_point.col(0).block<NUMAXIS,1>(0,0) << 0.00, 0.00, 0.00;
 	
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
 	    /** Vectorial part of a quaternion **/
-	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
-	    sig_point.block<NUMAXIS,NUMAXIS>(0,0).col(i) = f*(vectorq/(a+e_q[i].w()));
-// 	    std::cout<<"sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+// 	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
+	    sig_point.col(i).block<NUMAXIS,1>(0,0) = f*(vectorq/(a+e_q[i].w()));
+//  	    std::cout<<"sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Predicted mean **/
@@ -430,15 +430,14 @@ namespace filter
 	
 	/** Innovation covariance **/
 	Pnu = Pzz + R;
+	std::cout<<"Pnu:\n"<<Pnu<<"\n";
 	
 	/** Cross-correlation matrix **/	
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
 	    sumPxz += ((sig_point.col(i)-x) * (gamma.col(i)-z_e).transpose());
 	}
-	
-	Pxz = (1/(STATEVECTORSIZE + lambda))*(((sig_point.col(i)-x) * (gamma.col(i)-z_e).transpose()) + (0.5 * sumPxz));
-	
+	Pxz = (1/(STATEVECTORSIZE + lambda))*(((sig_point.col(0)-x) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumPxz));
 	
 	/** Compute the Kalman Gain **/
 	K = Pxz * Pnu.inverse();
@@ -458,11 +457,11 @@ namespace filter
 	Px = Px - K*Pnu*K.transpose();
 	
 	/** Update the attitude quaternion using the state vector (rodrigues parameter)**/
-	q4 = ((-a * x.block<NUMAXIS,1>(0,0).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*x.block<NUMAXIS,1>(0,0).squaredNorm()))/(pow(f,2)+x.block<NUMAXIS,1>(0,0).squaredNorm());
+	q4 = ((-a * (x.block<NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<NUMAXIS,1>(0,0)).squaredNorm());
 	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
 	
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
-	
+
 	at_q = rotation * at_q;
 
 	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
