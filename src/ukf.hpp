@@ -148,22 +148,7 @@ namespace filter
 	    */
 	    int setAttitude (Eigen::Quaternion <double> *initq);
 
-	    /**
-	    * @brief This function set the initial Omega matrix
-	    * 
-	    * Initial Omega matrix with angular velocity for 
-	    * quaternion integration.
-	    *
-	    * @author Javier Hidalgo Carrio.
-	    *
-	    * @param[in] *u pointer to vector with the angular velocity
-	    *
-	    * @return OK is everything all right. ERROR on other cases.
-	    *
-	    */
-	    int setOmega (Eigen::Matrix <double,NUMAXIS,1>  *u);
-
-	    
+	    	    
 	    /**
 	    * @brief This function initilize the filter
 	    * 
@@ -183,8 +168,40 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void Init (Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *P_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R, double a, double f, double lambda, double g);
+	    void Init (Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *P_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R,
+		       Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g);
 	    
+	    /**
+	    * @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid earth model.
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in] latitude double the latitude value in radian
+	    * @param[in] altitude double with the altitude value in meters
+	    *
+	    * @return double. the theoretical value of the local gravity
+	    *
+	    */
+	    double GravityModel (double latitude, double altitude);
+	    
+	    /**
+	    * @brief Substract the Earth rotation from the gyroscopes readout
+	    *
+	    * This function computes the substraction of the rotation of the Earth (EARTHW)
+	    * from the gyroscope values. This function uses quaternion of transformation from
+	    * the body to the geographic frame and the latitude in radians.
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in, out] *u pointer to angular velocity
+	    * @param[in] *qb_g quaternion from body frame to geographic frame
+	    * @param[in] latitude location latitude angle in radians
+	    *
+	    * @return void
+	    *
+	    */
+	    void SubstractEarthRotation(Eigen::Matrix <double, NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude);
+      
 	     /**
 	    * @brief Discrete-time quaternion kinematic equation
 	    * 

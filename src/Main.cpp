@@ -26,6 +26,17 @@ int main(int argc, char** argv)
 	Eigen::Matrix3d a;
 	Eigen::Matrix <double, NUMAXIS, 1> euler;
 	
+	Eigen::Matrix <double,STATEVECTORSIZE,1> x_0; /**< Initial state vector */
+	Eigen::Matrix <double,STATEVECTORSIZE,1> vector; /**< Initial state vector */
+	Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
+	Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> P_0; /**< Initial State covariance matrix */
+	Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
+	Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
+	Eigen::Matrix <double,NUMAXIS, 1>  u;
+	Eigen::Matrix <double,NUMAXIS, 1>  v;
+	
+	
 	mivector << 1, -4, 5;
 	
 	euler << 1.57, 0,0;
@@ -94,6 +105,29 @@ int main(int argc, char** argv)
 	std::cout << "e_q[4] is:\n"<< e_q[4].x()<<" " << e_q[4].y()<< " " << e_q[4].z()<< " " << e_q[4].w()<<"\n";
 	std::cout << "e_q[5] is:\n"<< e_q[5].x()<<" " << e_q[5].y()<< " " << e_q[5].z()<< " " << e_q[5].w()<<"\n";
 	
+	
+	/** INIT FIL:TER VALUES **/
+	gtilde << 0,0, 9.81;
+	at_q = Eigen::Quaternion<double>::Identity();
+	x_0 << 0,0,0,0.1,0.1,0.1;
+	vector << 0.25, 0.25, 0.25, 0.2, 0.2, 0.2;
+	P_0 = vector.asDiagonal();
+	vector << 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005;
+	Q = vector.asDiagonal();
+	R << 0.0002, 0.00, 0.00,
+	    0.00, 0.0002, 0.00,
+	    0.00, 0.00, 0.0002;
+	u<< (10*D2R), (10*D2R), (10*D2R);
+	
+	myukf.Init(&x_0, &P_0, &Q, &R, &at_q,(double)1.00, (double)4.00, 1, gtilde[2]);
+	
+	/** LUNCH THE FILTER **/
+	myukf.predict(&u, 0.01);
+	
+	std::cout << "Enter";
+	std::cin >> i;
+	
+	myukf.update(&v, &v);
 	
 	return 0;
 }

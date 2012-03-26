@@ -1,10 +1,9 @@
 <package>
   <description brief="Unscented Quaternion Kalman Filter">
-  A quaternion unscented kalman filter structure is used. This is based on an unscented varian of a Kalman filter. 
+  A quaternion unscented kalman filter structure is used. This is based on an unscented variant of a Kalman filter. 
   The filter use the multiplicative quaternion approach, which means that the quaternion in the system perform incremental steps and is set to zero at each
   filter loop. This approach avoids quaternion renormalization. Also the filter uses the gyroscopes model consisted by random walk (white noise) and rate random walk.
-  Ultimately, any actitude sensor can be used in the measurement step and more than one if available. Magnetic sensor output is used only for yaw angle correction
-  (only when especified).
+  Ultimately, any attitude sensor can be used in the measurement step and more than one if available.
   </description>
   <author>Javier Hidalgo Carrio/javier.hidalgo_carrio@dfki.de</author>
   <license></license>
@@ -24,6 +23,6 @@
     <cpp cflags="" lflags="" />
   </export>
   
-  <tags>stable, localization</tags>
+  <tags>unstable, localization</tags>
   
 </package>

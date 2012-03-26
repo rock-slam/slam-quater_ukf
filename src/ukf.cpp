@@ -33,7 +33,7 @@ namespace filter
     /**
     * @brief This function Initilize the vectors and matrix of the UKF   
     */
-    void ukf::Init(Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  >* P_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  >* Q, Eigen::Matrix< double, NUMAXIS , NUMAXIS  >* R, double a, double f, double lambda, double g)
+    void ukf::Init(Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  >* P_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  > *Q, Eigen::Matrix< double, NUMAXIS , NUMAXIS  > *R, Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g)
     {
 	
       /** Gravitation acceleration **/
@@ -43,17 +43,29 @@ namespace filter
       this->a = a;
       this->f = f;
       this->lambda = lambda;
+      \
+      /** Set the state vector **/
+      this->x = *x_0;
       
       /** Set the matrices **/
       this->Px = *P_0;
       this->Q = *Q;
       this->R = *R;
       
-      /** Set the state vector **/
-      this->x = *x_0;
+      /** Set the initial attitude **/
+      this->at_q = *at_q;
+      
+      /** Print values **/
+      std::cout<<"a: "<<a<<"\n";
+      std::cout<<"f: "<<f<<"\n";
+      std::cout<<"lambda: "<<lambda<<"\n";
+      std::cout<<"x:\n"<<this->x<<"\n";
+      std::cout<<"at_q:\n"<<this->at_q.x()<<" "<<this->at_q.y()<<" "<<this->at_q.z()<<" "<<this->at_q.w()<<"\n";
+      std::cout<<"Px:\n"<<Px<<"\n";
+      std::cout<<"Q:\n"<<this->Q<<"\n";
+      std::cout<<"R:\n"<<this->R<<"\n";
       
       return;
-      
     }
     
     /**
@@ -105,6 +117,41 @@ namespace filter
     {
       return x;
 
+    }
+    
+    /**
+    * @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid earth model.
+    */
+    double ukf::GravityModel(double latitude, double altitude)
+    {
+      double g; /**< g magnitude at zero altitude **/
+
+      /** Nominal Gravity model **/
+      g = GWGS0*((1+GWGS1*pow(sin(latitude),2))/sqrt(1-pow(ECC,2)*pow(sin(latitude),2)));
+
+      /** Gravity affects by the altitude (aprox the value r = Re **/
+      g = g*pow(Re/(Re+altitude), 2);
+
+      std::cout<<"Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
+
+      return g;
+
+    }
+    
+    /**
+    * @brief Substract the Earth rotation from the gyroscopes readout
+    */
+    void ukf::SubstractEarthRotation(Eigen::Matrix <double, NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude)
+    {
+      Eigen::Matrix <double, NUMAXIS, 1> v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /**< vector of earth rotation components expressed in the geografic frame according to the latitude **/
+
+      /** Compute the v vector expressed in the body frame **/
+      v = (*qb_g) * v;
+
+      /** Subtract the earth rotation to the vector of inputs (u = u-v**/
+      (*u)  = (*u) - v;
+      
+      return;
     }
     
     /**
@@ -206,18 +253,24 @@ namespace filter
 	/** Compute the sigma points **/
 	M = (STATEVECTORSIZE+lambda)*(Px + Q);
 	Eigen::LLT<Eigen::MatrixXd> lltOfM(M);
- 	M = lltOfM.matrixL(); //square root of a semi-definited positive matrix 
+	M = lltOfM.matrixL(); //square root of a semi-definited positive matrix 
+	
+	std::cout<<"Sqrt(M):\n"<<M<<"\n";
 
 	sig_point.col(0) = x;
 	
 	for (i=1; i<=STATEVECTORSIZE; i++)
 	{
-	    sig_point.col(i) = x + M.col(i);
+	    //std::cout<<"M.col:\n"<<M.col(i-1)<<"\n";
+	    sig_point.col(i) = x + M.col(i-1);
+	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	for (i=(STATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
 	{
-	    sig_point.col(i) = x - M.col(i);
+// 	    std::cout<<"M.col:\n"<<M.col(i-(STATEVECTORSIZE+1))<<"\n";
+	    sig_point.col(i) = x - M.col(i-(STATEVECTORSIZE+1));
+	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Calculate Error Quaternion **/
@@ -226,18 +279,22 @@ namespace filter
 	
 	e_q[0] = auxq; //Error quaternion (0) is the identity quaternion.
 	
-	for (i=1; i<=SIGPOINTSIZE; i++)
+	for (i=1; i<SIGPOINTSIZE; i++)
 	{
 	    /** Calculate **/
 	    p_sig_point = (sig_point.block<NUMAXIS,NUMAXIS>(0,0)).col(i);
 	    q4 = ((-a * p_sig_point.squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*p_sig_point.squaredNorm()))/(pow(f,2)+p_sig_point.squaredNorm());
 	    vectorq = (1/f)*(a + q4) * p_sig_point;
 	    
+// 	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
+	    
 	    /** Store in the quaternion **/
 	    /** Note the order of the arguments in a quaternion:
 	    * the real w coefficient first, while internally the
 	    * coefficients are stored in the following order: [x, y, z, w] **/
 	    e_q[i] = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
+	    
+// 	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
 //  	    e_q.block<NUMAXIS,NUMAXIS>(0,0).col(i) = vectorq;
 //  	    e_q.col(i)[3] = q4;
 	}
@@ -248,14 +305,21 @@ namespace filter
 	for (i=1;i<SIGPOINTSIZE;i++)
 	{
 	    sig_q[i] = e_q[i]*at_q;
+// 	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	}
 	
+	std::cout<<"PROPAGATION\n";
+
 	/** Propagate quaternions forward (sigma point quaternions) u is the vector with the angular velocities **/
 	for (i=0; i<SIGPOINTSIZE;i++)
 	{
 	    /** The estimated angular velocities are given by substracting the bias **/
 	    u_plus = *u - (sig_point.block<NUMAXIS,NUMAXIS>(3,3)).col(i);
+	    
+	    /** Attitude quaternion dynamic matrix Omega **/
 	    Omega(&(sig_q[i]), &(u_plus), dt);
+	    
+// 	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	    
 	    /** Store the inverse value of the quaternion when i = 0 **/
 	    if (i==0)
@@ -265,7 +329,10 @@ namespace filter
 	    
 	    /** Propagate error quaternions **/
 	    e_q[i] = sig_q[i] * auxq;
+	    
+// 	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
 	}
+	
 	
 	
 	/** Propagate the sigma points **/
@@ -276,6 +343,7 @@ namespace filter
 	    /** Vectorial part of a quaternion **/
 	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
 	    sig_point.block<NUMAXIS,NUMAXIS>(0,0).col(i) = f*(vectorq/(a+e_q[i].w()));
+// 	    std::cout<<"sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Predicted mean **/
@@ -286,6 +354,8 @@ namespace filter
 	sumvar = (lambda * sig_point.col(0))+(0.5*sumvar);
 	x = (1/(STATEVECTORSIZE + lambda)) * sumvar;
 	
+	std::cout<<"State vector\n"<<x<<"\n";
+	
 	/** Predicted covariance **/
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
@@ -293,6 +363,8 @@ namespace filter
 	}
 	
 	Px = (1/(STATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
+	
+	std::cout<<"State covariance\n"<<Px<<"\n";
 	
 	return;
     }
@@ -316,6 +388,7 @@ namespace filter
 	for (i=0;i<SIGPOINTSIZE;i++)
 	{
 	    gamma.col(i) = sig_q[i]*r1;
+// 	    std::cout<<"gamma.col("<<i<<"):\n"<<gamma.col(i)<<"\n";
 	    
 	}
 	
@@ -327,6 +400,8 @@ namespace filter
 	sumvar = (lambda * gamma.col(0))+(0.5*sumvar);
 	z_e = (1/(STATEVECTORSIZE + lambda)) * sumvar;
 	
+	std::cout<<"z_e\n"<<z_e<<"\n";
+	
 	/** Predicted covariance of the observation **/
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
@@ -335,10 +410,14 @@ namespace filter
 	
 	Pzz = (1/(STATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
 	
+	std::cout<<"Pzz:\n"<<Pzz<<"\n";
+	
 	/** Update using Accelerometers **/
 	euler[0] = (double) -asin((double)(*acc)[1]/ (double)acc->norm()); // Roll
 	euler[1] = (double)-atan((*acc)[0]/(*acc)[2]); //Pitch
 	euler[2] = (double) sig_q[0].toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
+	
+	std::cout<<"Measurement euler angles: "<<euler(0)*R2D<<" "<<euler(1)*R2D<<" "<<euler(2)*R2D<<"\n";
 	
 	/** Compute quaternion from euler angles **/
 	rotation = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
@@ -347,6 +426,7 @@ namespace filter
 
 	/** Measurement vector **/
 	z_r = rotation * r1;
+	std::cout<<"z_r\n"<<z_r<<"\n";
 	
 	/** Innovation covariance **/
 	Pnu = Pzz + R;
@@ -363,8 +443,13 @@ namespace filter
 	/** Compute the Kalman Gain **/
 	K = Pxz * Pnu.inverse();
 	
+	std::cout<<"K:\n"<<K<<"\n";
+	
 	/** Innovation in the measurement **/
 	Nu = z_r - z_e;
+// 	Nu = Eigen::Matrix<double, NUMAXIS, 1>::Zero();
+	
+	std::cout<<"Nu:\n"<<Nu<<"\n";
 	
 	/** Correction of the mean value (state)**/
 	x = x + K*Nu;
@@ -373,13 +458,14 @@ namespace filter
 	Px = Px - K*Pnu*K.transpose();
 	
 	/** Update the attitude quaternion using the state vector (rodrigues parameter)**/
-	
 	q4 = ((-a * x.block<NUMAXIS,1>(0,0).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*x.block<NUMAXIS,1>(0,0).squaredNorm()))/(pow(f,2)+x.block<NUMAXIS,1>(0,0).squaredNorm());
 	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
 	
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 	
 	at_q = rotation * at_q;
+
+	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
 	
 	/** Set to zero for the next propagation **/
 	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
