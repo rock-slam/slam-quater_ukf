@@ -111,9 +111,9 @@ int main(int argc, char** argv)
 	gtilde << 0,0, 9.81;
 	at_q = Eigen::Quaternion<double>::Identity();
 	x_0 << 0,0,0,0.1,0.1,0.1;
-	vector << 0.25, 0.25, 0.25, 0.2, 0.2, 0.2;
+	vector << 0.025, 0.025, 0.025, 0.02, 0.02, 0.02;
 	P_0 = vector.asDiagonal();
-	vector << 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005;
+	vector << 0.000001, 0.000001, 0.000001, 0.000001, 0.000001, 0.000001;
 	Q = vector.asDiagonal();
 	R << 0.0002, 0.00, 0.00,
 	    0.00, 0.0002, 0.00,
@@ -123,14 +123,30 @@ int main(int argc, char** argv)
 	myukf.Init(&x_0, &P_0, &Q, &R, &at_q,(double)1.00, (double)4.00, 1, gtilde[2]);
 	
 	/** LUNCH THE FILTER **/
-	myukf.predict(&u, 0.01);
+	myukf.predict(&u, 0.1);
 	
 	std::cout << "Enter";
 	std::cin >> i;
 	
 	mivector << 0.00, 0.00, 9.81;
 	
-	myukf.update(&v, &mivector);
+	myukf.attitudeUpdate();
+	
+	std::cout << "Enter";
+	std::cin >> i;
+	
+	u<< (10*D2R), (10*D2R), (10*D2R);
+	
+	/** LUNCH THE FILTER **/
+	myukf.predict(&u, 0.1);
+	
+	std::cout << "Enter";
+	std::cin >> i;
+	
+	mivector << 0.00, 0.00, 9.81;
+	
+	myukf.attitudeUpdate();
+	
 	
 	return 0;
 }

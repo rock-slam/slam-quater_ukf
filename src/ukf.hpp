@@ -253,6 +253,22 @@ namespace filter
 	    */
 	    void update(Eigen::Matrix <double,NUMAXIS,1>  *acc, Eigen::Matrix <double,NUMAXIS,1>  *mag);
 	    
+	    /**
+	    * @brief Performs attitude quaternion update.
+	    * 
+	    * It only performs the update of the attitude quaternion from the state vector (x)
+	    * After the ccomputation set x to zero for next propagation (only the Rodriguez parameters part of x)
+	    *
+	    * @author Javier Hidalgo Carrio.
+	    *
+	    * @param[in,out] *at_q pointer to qttitude quaternion
+	    * @param[in,out] *x pointer to the KF state vector
+	    *
+	    * @return void
+	    *
+	    */
+	    void attitudeUpdate();
+	    
 	
 
     };

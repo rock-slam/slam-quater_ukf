@@ -167,6 +167,8 @@ namespace filter
 	Eigen::Matrix< double, QUATERSIZE , 1  > q;
 	Eigen::Matrix <double, NUMAXIS, NUMAXIS> Upper;
 	Eigen::Matrix <double, NUMAXIS, 1> psi;
+	
+// 	std::cout << "In Omega (dt = "<<dt<<")\n";
 
 	Crossproduct = Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Zero();
 	Omega = Eigen::Matrix <double, QUATERSIZE, QUATERSIZE>::Zero();
@@ -219,8 +221,12 @@ namespace filter
 		}
 	    }
 
+// 	    std::cout<<"q(before):\n"<<q<<"\n";
+	    
 	    /** Propagate forward in time, y = (A) x + y **/
 	    q = Omega*q;
+	    
+// 	    std::cout<<"q(after):\n"<<q<<"\n";
 
 	    /** Store the update quaternion in the argument quaternion **/
 	    quat->w() = q(3);
@@ -251,11 +257,13 @@ namespace filter
 	Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> sumM = Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE>::Zero(); /**< Summation matrix **/
 	
 	/** Compute the sigma points **/
+// 	std::cout<<"(Px + Q):\n"<<(Px + Q)<<"\n (n+lambda)"<<(STATEVECTORSIZE+lambda)<<"\n";
 	M = (STATEVECTORSIZE+lambda)*(Px + Q);
+// 	std::cout<<"M:\n"<<M<<"\n";
 	Eigen::LLT<Eigen::MatrixXd> lltOfM(M);
 	M = lltOfM.matrixL(); //square root of a semi-definited positive matrix 
 	
-	std::cout<<"Sqrt(M):\n"<<M<<"\n";
+//  	std::cout<<"Sqrt(M):\n"<<M<<"\n";
 
 	sig_point.col(0) = x;
 	
@@ -263,14 +271,14 @@ namespace filter
 	{
 	    //std::cout<<"M.col:\n"<<M.col(i-1)<<"\n";
 	    sig_point.col(i) = x + M.col(i-1);
-// 	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+  	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	for (i=(STATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
 	{
 // 	    std::cout<<"M.col:\n"<<M.col(i-(STATEVECTORSIZE+1))<<"\n";
 	    sig_point.col(i) = x - M.col(i-(STATEVECTORSIZE+1));
-// 	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+  	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Calculate Error Quaternion **/
@@ -283,10 +291,12 @@ namespace filter
 	{
 	    /** Calculate **/
 	    p_sig_point = (sig_point.col(i)).block<NUMAXIS,1>(0,0);
+	    
+// 	    std::cout<< "p_sig_point["<<i<<": \n"<< p_sig_point <<"\nNORM :"<<p_sig_point.squaredNorm()<<"\n";
 	    q4 = ((-a * p_sig_point.squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*p_sig_point.squaredNorm()))/(pow(f,2)+p_sig_point.squaredNorm());
 	    vectorq = (1/f)*(a + q4) * p_sig_point;
 	    
-//  	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
+//   	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
 	    
 	    /** Store in the quaternion **/
 	    /** Note the order of the arguments in a quaternion:
@@ -294,7 +304,7 @@ namespace filter
 	    * coefficients are stored in the following order: [x, y, z, w] **/
 	    e_q[i] = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 	    
-// 	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
+//  	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
 //  	    e_q.block<NUMAXIS,NUMAXIS>(0,0).col(i) = vectorq;
 //  	    e_q.col(i)[3] = q4;
 	}
@@ -305,7 +315,6 @@ namespace filter
 	for (i=1;i<SIGPOINTSIZE;i++)
 	{
 	    sig_q[i] = e_q[i]*at_q;
-// 	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	}
 	
 	std::cout<<"PROPAGATION\n";
@@ -314,12 +323,15 @@ namespace filter
 	for (i=0; i<SIGPOINTSIZE;i++)
 	{
 	    /** The estimated angular velocities are given by substracting the bias **/
-	    u_plus = *u - (sig_point.col(i)).block<NUMAXIS,1>(3,0);
-	    
+ 	    u_plus = *u - (sig_point.col(i)).block<NUMAXIS,1>(3,0);
+// 	    std::cout <<"Bias:\n"<< (sig_point.col(i)).block<NUMAXIS,1>(3,0) <<"\n";
+// 	    u_plus = *u;
+	    std::cout <<"gyros(u):\n"<< u_plus <<"\n";
+// 	    std::cout<<"Sigma Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	    /** Attitude quaternion dynamic matrix Omega **/
 	    Omega(&(sig_q[i]), &(u_plus), dt);
 	    
-//  	    std::cout<<"Sigma Point Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
+//   	    std::cout<<"Sigma Quaternion (after)["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
 	    
 	    /** Store the inverse value of the quaternion when i = 0 **/
 	    if (i==0)
@@ -330,20 +342,21 @@ namespace filter
 	    /** Propagate error quaternions **/
 	    e_q[i] = sig_q[i] * auxq;
 	    
-// 	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
+//  	    std::cout<<"Error Quaternion (after)["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
+// 	    std::cout<<"************************\n";
 	}
 	
 	
 	
-	/** Propagate the sigma points **/
+	/** Compute the sigma points **/
 	sig_point.col(0).block<NUMAXIS,1>(0,0) << 0.00, 0.00, 0.00;
 	
 	for (i=1; i<SIGPOINTSIZE; i++)
 	{
 	    /** Vectorial part of a quaternion **/
-// 	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
+ 	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
 	    sig_point.col(i).block<NUMAXIS,1>(0,0) = f*(vectorq/(a+e_q[i].w()));
-//  	    std::cout<<"sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
+//   	    std::cout<<"sig_point.col (after propagation)("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Predicted mean **/
@@ -364,7 +377,7 @@ namespace filter
 	
 	Px = (1/(STATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
 	
-	std::cout<<"State covariance\n"<<Px<<"\n";
+// 	std::cout<<"State covariance\n"<<Px<<"\n";
 	
 	return;
     }
@@ -413,7 +426,7 @@ namespace filter
 	std::cout<<"Pzz:\n"<<Pzz<<"\n";
 	
 	/** Update using Accelerometers **/
-	euler[0] = (double) -asin((double)(*acc)[1]/ (double)acc->norm()); // Roll
+	euler[0] = (double) asin((double)(*acc)[1]/ (double)acc->norm()); // Roll
 	euler[1] = (double)-atan((*acc)[0]/(*acc)[2]); //Pitch
 	euler[2] = (double) sig_q[0].toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
 	
@@ -446,7 +459,6 @@ namespace filter
 	
 	/** Innovation in the measurement **/
 	Nu = z_r - z_e;
-// 	Nu = Eigen::Matrix<double, NUMAXIS, 1>::Zero();
 	
 	std::cout<<"Nu:\n"<<Nu<<"\n";
 	
@@ -462,7 +474,7 @@ namespace filter
 	
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 
-	at_q = rotation * at_q;
+	at_q = rotation * sig_q[0];
 
 	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
 	
@@ -470,6 +482,33 @@ namespace filter
 	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
 	
     }
+
+
+    void ukf::attitudeUpdate()
+    {
+	
+	double q4; /**< scalar part of a quaternion **/
+	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
+	Eigen::Quaternion <double> rotation;
+
+	/** Update the attitude quaternion using the state vector (rodrigues parameter)**/
+	q4 = ((-a * (x.block<NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<NUMAXIS,1>(0,0)).squaredNorm());
+	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
+
+	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
+	
+// 	std::cout <<" SquaredNorm: "<<(x.block<NUMAXIS,1>(0,0)).squaredNorm() <<"\n";
+// 	std::cout<<"rotation:\n"<<rotation.x()<<" "<<rotation.y()<<" "<<rotation.z()<<" "<<rotation.w()<<"\n";
+
+	at_q = rotation * sig_q[0];
+
+	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
+
+	/** Set to zero for the next propagation **/
+	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
+    }
+
+
 
 
 
