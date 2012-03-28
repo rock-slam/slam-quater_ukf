@@ -33,7 +33,7 @@ namespace filter
     /**
     * @brief This function Initilize the vectors and matrix of the UKF   
     */
-    void ukf::Init(Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  >* P_0, Eigen::Matrix< double, STATEVECTORSIZE , STATEVECTORSIZE  > *Q, Eigen::Matrix< double, NUMAXIS , NUMAXIS  > *R, Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g)
+    void ukf::Init(Matrix <double,UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE  >* P_0, Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE  > *Q, Eigen::Matrix< double, NUMAXIS , NUMAXIS  > *R, Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g)
     {
 	
       /** Gravitation acceleration **/
@@ -113,7 +113,7 @@ namespace filter
     /**
     * @brief Gets the current state vector of the filter
     */
-    Eigen::Matrix< double, STATEVECTORSIZE , 1  > ukf::getState()
+    Eigen::Matrix< double, UKFSTATEVECTORSIZE , 1  > ukf::getState()
     {
       return x;
 
@@ -249,16 +249,16 @@ namespace filter
 	register int i;
 	double q4; /**< scalar part of a quaternion **/
 	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
-	Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> M;
+	Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> M;
 	Eigen::Quaternion <double> auxq; /**< Auxiliar quaternion for operations **/
 	Eigen::Matrix <double, NUMAXIS, 1> p_sig_point; /**< Vector containing the rodrigues parameters , upper part of the state vector and the sigma points  **/
 	Eigen::Matrix <double, NUMAXIS, 1> u_plus; /**< Vector of corrected angular velocity **/
-	Eigen::Matrix <double, STATEVECTORSIZE, 1> sumvar = Eigen::Matrix <double, STATEVECTORSIZE, 1>::Zero(); /**< Summation variable **/
-	Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> sumM = Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE>::Zero(); /**< Summation matrix **/
+	Eigen::Matrix <double, UKFSTATEVECTORSIZE, 1> sumvar = Eigen::Matrix <double, UKFSTATEVECTORSIZE, 1>::Zero(); /**< Summation variable **/
+	Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> sumM = Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE>::Zero(); /**< Summation matrix **/
 	
 	/** Compute the sigma points **/
-// 	std::cout<<"(Px + Q):\n"<<(Px + Q)<<"\n (n+lambda)"<<(STATEVECTORSIZE+lambda)<<"\n";
-	M = (STATEVECTORSIZE+lambda)*(Px + Q);
+// 	std::cout<<"(Px + Q):\n"<<(Px + Q)<<"\n (n+lambda)"<<(UKFSTATEVECTORSIZE+lambda)<<"\n";
+	M = (UKFSTATEVECTORSIZE+lambda)*(Px + Q);
 // 	std::cout<<"M:\n"<<M<<"\n";
 	Eigen::LLT<Eigen::MatrixXd> lltOfM(M);
 	M = lltOfM.matrixL(); //square root of a semi-definited positive matrix 
@@ -267,17 +267,17 @@ namespace filter
 
 	sig_point.col(0) = x;
 	
-	for (i=1; i<=STATEVECTORSIZE; i++)
+	for (i=1; i<=UKFSTATEVECTORSIZE; i++)
 	{
 	    //std::cout<<"M.col:\n"<<M.col(i-1)<<"\n";
 	    sig_point.col(i) = x + M.col(i-1);
   	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
-	for (i=(STATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
+	for (i=(UKFSTATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
 	{
-// 	    std::cout<<"M.col:\n"<<M.col(i-(STATEVECTORSIZE+1))<<"\n";
-	    sig_point.col(i) = x - M.col(i-(STATEVECTORSIZE+1));
+// 	    std::cout<<"M.col:\n"<<M.col(i-(UKFSTATEVECTORSIZE+1))<<"\n";
+	    sig_point.col(i) = x - M.col(i-(UKFSTATEVECTORSIZE+1));
   	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
@@ -365,7 +365,7 @@ namespace filter
 	    sumvar += sig_point.col(i);
 	}
 	sumvar = (lambda * sig_point.col(0))+(0.5*sumvar);
-	x = (1/(STATEVECTORSIZE + lambda)) * sumvar;
+	x = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
 	std::cout<<"State vector\n"<<x<<"\n";
 	
@@ -375,7 +375,7 @@ namespace filter
 	    sumM += ((sig_point.col(i)-x) * (sig_point.col(i)-x).transpose());
 	}
 	
-	Px = (1/(STATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
+	Px = (1/(UKFSTATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
 	
 // 	std::cout<<"State covariance\n"<<Px<<"\n";
 	
@@ -390,7 +390,7 @@ namespace filter
 	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
 	Eigen::Matrix <double, NUMAXIS, 1> sumvar = Eigen::Matrix <double, NUMAXIS, 1>::Zero(); /**< Summation variable **/
 	Eigen::Matrix <double, NUMAXIS, NUMAXIS> sumM = Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Zero(); /**< Summation matrix **/
-	Eigen::Matrix <double, STATEVECTORSIZE, NUMAXIS> sumPxz = Eigen::Matrix <double, STATEVECTORSIZE, NUMAXIS>::Zero(); /**< Summation matrix **/
+	Eigen::Matrix <double, UKFSTATEVECTORSIZE, NUMAXIS> sumPxz = Eigen::Matrix <double, UKFSTATEVECTORSIZE, NUMAXIS>::Zero(); /**< Summation matrix **/
 	Eigen::Quaternion <double> rotation;
 	
 	
@@ -411,7 +411,7 @@ namespace filter
 	    sumvar += gamma.col(i);
 	}
 	sumvar = (lambda * gamma.col(0))+(0.5*sumvar);
-	z_e = (1/(STATEVECTORSIZE + lambda)) * sumvar;
+	z_e = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
 	std::cout<<"z_e\n"<<z_e<<"\n";
 	
@@ -421,7 +421,7 @@ namespace filter
 	    sumM += ((gamma.col(i)-z_e) * (gamma.col(i)-z_e).transpose());
 	}
 	
-	Pzz = (1/(STATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
+	Pzz = (1/(UKFSTATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
 	
 	std::cout<<"Pzz:\n"<<Pzz<<"\n";
 	
@@ -450,7 +450,7 @@ namespace filter
 	{
 	    sumPxz += ((sig_point.col(i)-x) * (gamma.col(i)-z_e).transpose());
 	}
-	Pxz = (1/(STATEVECTORSIZE + lambda))*(((sig_point.col(0)-x) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumPxz));
+	Pxz = (1/(UKFSTATEVECTORSIZE + lambda))*(((sig_point.col(0)-x) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumPxz));
 	
 	/** Compute the Kalman Gain **/
 	K = Pxz * Pnu.inverse();

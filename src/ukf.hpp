@@ -21,9 +21,15 @@ namespace filter
     #endif
 
     /** IKF constant parameters **/
-    #define STATEVECTORSIZE 6 /**< Number of variables of the vector state-space representation **/
+    #ifndef UKFSTATEVECTORSIZE
+    #define UKFSTATEVECTORSIZE 6 /**< Number of variables of the vector state-space representation **/
+    #endif
+    #ifndef QUATERSIZE
     #define QUATERSIZE 4 /**< Number of parameters of a quaternion **/
-    #define SIGPOINTSIZE (2*STATEVECTORSIZE) + 1 /**< Number of Sigma Points **/
+    #endif
+    #ifndef SIGPOINTSIZE
+    #define SIGPOINTSIZE (2*UKFSTATEVECTORSIZE) + 1 /**< Number of Sigma Points **/
+    #endif
 
     #ifndef PI
     #define PI 3.141592653589793238462643383279502884197169399375105820974944592307816406286 /**< Pi Number */
@@ -72,13 +78,13 @@ namespace filter
 	 **/
 	private:
 	    double f, a, lambda; /**< Parameters for the Unscented KF  */
-	    Eigen::Matrix <double,STATEVECTORSIZE,1> x; /**< State vector */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> x; /**< State vector */
 	    Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
-	    Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Px; /**< State covariance matrix */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Px; /**< State covariance matrix */
 	    Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
-	    Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
 	    Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
-	    Eigen::Matrix <double,STATEVECTORSIZE, SIGPOINTSIZE> sig_point; /**< Sigma points for SPKF */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, SIGPOINTSIZE> sig_point; /**< Sigma points for SPKF */
 	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
 	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> sig_q; /**< Sigma point quaternions */
 	    Eigen::Matrix <double,NUMAXIS, SIGPOINTSIZE> gamma; /**< Observation in the model */
@@ -87,8 +93,8 @@ namespace filter
 	    Eigen::Matrix <double,NUMAXIS, 1> Nu; /**< Innovation */
 	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pzz; /** Output covariance matrix */
 	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pnu; /** Innovation covariance matrix */
-	    Eigen::Matrix <double,STATEVECTORSIZE, NUMAXIS> Pxz; /** Cross-correlation matrix */
-	    Eigen::Matrix <double,STATEVECTORSIZE, NUMAXIS> K; /**< Kalman Gain sometimes also called W */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, NUMAXIS> Pxz; /** Cross-correlation matrix */
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, NUMAXIS> K; /**< Kalman Gain sometimes also called W */
 	
 	public: 
 	    
@@ -101,7 +107,7 @@ namespace filter
 	    * @return State Vector
 	    *
 	    */
-	    Eigen::Matrix <double,STATEVECTORSIZE,1> getState();
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> getState();
 
 
 	    /**
@@ -132,7 +138,7 @@ namespace filter
 	    * @return Matrix P of the covariance of the state vector
 	    *
 	    */
-	    Eigen::Matrix <double,STATEVECTORSIZE,STATEVECTORSIZE> getCovariance();
+	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,UKFSTATEVECTORSIZE> getCovariance();
 
 	    /**
 	    * @brief This function Initilize Attitude
@@ -168,7 +174,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void Init (Matrix <double,STATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *P_0, Eigen::Matrix <double, STATEVECTORSIZE, STATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R,
+	    void Init (Matrix <double,UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> *P_0, Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R,
 		       Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g);
 	    
 	    /**

@@ -26,12 +26,12 @@ int main(int argc, char** argv)
 	Eigen::Matrix3d a;
 	Eigen::Matrix <double, NUMAXIS, 1> euler;
 	
-	Eigen::Matrix <double,STATEVECTORSIZE,1> x_0; /**< Initial state vector */
-	Eigen::Matrix <double,STATEVECTORSIZE,1> vector; /**< Initial state vector */
+	Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> x_0; /**< Initial state vector */
+	Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> vector; /**< Initial state vector */
 	Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
-	Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> P_0; /**< Initial State covariance matrix */
+	Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> P_0; /**< Initial State covariance matrix */
 	Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
-	Eigen::Matrix <double,STATEVECTORSIZE, STATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
 	Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
 	Eigen::Matrix <double,NUMAXIS, 1>  u;
 	Eigen::Matrix <double,NUMAXIS, 1>  v;
