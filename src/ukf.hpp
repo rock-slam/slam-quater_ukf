@@ -167,9 +167,11 @@ namespace filter
 	    * @param[in] *P_0 initial convariance matrix of the process.
 	    * @param[in] *Q noise covariance matrix of the model
 	    * @param[in] *R noise covariance matrix of the measurement
+	    * @param[in] *at_q initial attitude quaternion
 	    * @param[in] *a parameter for the UKF
 	    * @param[in] *f parameter for the UKF\
 	    * @param[in] *lambda parameter for the UKF, to define the distance of the sigma point with respect to the mean
+	    * @param[in] g local gravity value
 	    *
 	    * @return void
 	    *
@@ -267,8 +269,6 @@ namespace filter
 	    *
 	    * @author Javier Hidalgo Carrio.
 	    *
-	    * @param[in,out] *at_q pointer to qttitude quaternion
-	    * @param[in,out] *x pointer to the KF state vector
 	    *
 	    * @return void
 	    *

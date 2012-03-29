@@ -56,14 +56,14 @@ namespace filter
       this->at_q = *at_q;
       
       /** Print values **/
-      std::cout<<"a: "<<a<<"\n";
-      std::cout<<"f: "<<f<<"\n";
-      std::cout<<"lambda: "<<lambda<<"\n";
-      std::cout<<"x:\n"<<this->x<<"\n";
-      std::cout<<"at_q:\n"<<this->at_q.x()<<" "<<this->at_q.y()<<" "<<this->at_q.z()<<" "<<this->at_q.w()<<"\n";
-      std::cout<<"Px:\n"<<Px<<"\n";
-      std::cout<<"Q:\n"<<this->Q<<"\n";
-      std::cout<<"R:\n"<<this->R<<"\n";
+//       std::cout<<"a: "<<a<<"\n";
+//       std::cout<<"f: "<<f<<"\n";
+//       std::cout<<"lambda: "<<lambda<<"\n";
+//       std::cout<<"x:\n"<<this->x<<"\n";
+//       std::cout<<"at_q:\n"<<this->at_q.x()<<" "<<this->at_q.y()<<" "<<this->at_q.z()<<" "<<this->at_q.w()<<"\n";
+//       std::cout<<"Px:\n"<<Px<<"\n";
+//       std::cout<<"Q:\n"<<this->Q<<"\n";
+//       std::cout<<"R:\n"<<this->R<<"\n";
       
       return;
     }
@@ -91,13 +91,10 @@ namespace filter
     {
       Eigen::Matrix <double, NUMAXIS, 1> euler;
       
-      //std::cout << Eigen::Matrix3d(q4) << std::endl; 
       Vector3d e = Eigen::Matrix3d(at_q).eulerAngles(2,1,0);
        euler(0) = e[2]; 
        euler(1) = e[1]; 
        euler(2) = e[0]; 
-//       std::cout << "Attitude (getEuler): "<< euler(0)<<" "<<euler(1)<<" "<<euler(2)<<"\n";
-       std::cout << "Attitude in degrees (getEuler): "<< euler(0)*R2D<<" "<<euler(1)*R2D<<" "<<euler(2)*R2D<<"\n";
       
       return euler;
     }
@@ -117,6 +114,14 @@ namespace filter
     {
       return x;
 
+    }
+    
+    /**
+    * @brief Gets Noise covariance matrix
+    */
+    Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE> ukf::getCovariance()
+    {
+	return Px;
     }
     
     /**
@@ -168,8 +173,6 @@ namespace filter
 	Eigen::Matrix <double, NUMAXIS, NUMAXIS> Upper;
 	Eigen::Matrix <double, NUMAXIS, 1> psi;
 	
-// 	std::cout << "In Omega (dt = "<<dt<<")\n";
-
 	Crossproduct = Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Zero();
 	Omega = Eigen::Matrix <double, QUATERSIZE, QUATERSIZE>::Zero();
 
@@ -221,12 +224,8 @@ namespace filter
 		}
 	    }
 
-// 	    std::cout<<"q(before):\n"<<q<<"\n";
-	    
 	    /** Propagate forward in time, y = (A) x + y **/
 	    q = Omega*q;
-	    
-// 	    std::cout<<"q(after):\n"<<q<<"\n";
 
 	    /** Store the update quaternion in the argument quaternion **/
 	    quat->w() = q(3);
@@ -235,8 +234,6 @@ namespace filter
 	    quat->z() = q(2);
 
 	}
-
-	//std::cout <<"q: "<<(*q)<<"\n";
 
 	return;
     }
@@ -269,16 +266,12 @@ namespace filter
 	
 	for (i=1; i<=UKFSTATEVECTORSIZE; i++)
 	{
-	    //std::cout<<"M.col:\n"<<M.col(i-1)<<"\n";
 	    sig_point.col(i) = x + M.col(i-1);
-  	    std::cout<<"(+)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	for (i=(UKFSTATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
 	{
-// 	    std::cout<<"M.col:\n"<<M.col(i-(UKFSTATEVECTORSIZE+1))<<"\n";
 	    sig_point.col(i) = x - M.col(i-(UKFSTATEVECTORSIZE+1));
-  	    std::cout<<"(-)sig_point.col("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Calculate Error Quaternion **/
@@ -292,11 +285,9 @@ namespace filter
 	    /** Calculate **/
 	    p_sig_point = (sig_point.col(i)).block<NUMAXIS,1>(0,0);
 	    
-// 	    std::cout<< "p_sig_point["<<i<<": \n"<< p_sig_point <<"\nNORM :"<<p_sig_point.squaredNorm()<<"\n";
 	    q4 = ((-a * p_sig_point.squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*p_sig_point.squaredNorm()))/(pow(f,2)+p_sig_point.squaredNorm());
 	    vectorq = (1/f)*(a + q4) * p_sig_point;
 	    
-//   	    std::cout<<"vectorq["<<i<<"]"<<":\n"<<vectorq<<"\n";
 	    
 	    /** Store in the quaternion **/
 	    /** Note the order of the arguments in a quaternion:
@@ -317,17 +308,13 @@ namespace filter
 	    sig_q[i] = e_q[i]*at_q;
 	}
 	
-	std::cout<<"PROPAGATION\n";
 
 	/** Propagate quaternions forward (sigma point quaternions) u is the vector with the angular velocities **/
 	for (i=0; i<SIGPOINTSIZE;i++)
 	{
 	    /** The estimated angular velocities are given by substracting the bias **/
  	    u_plus = *u - (sig_point.col(i)).block<NUMAXIS,1>(3,0);
-// 	    std::cout <<"Bias:\n"<< (sig_point.col(i)).block<NUMAXIS,1>(3,0) <<"\n";
-// 	    u_plus = *u;
-	    std::cout <<"gyros(u):\n"<< u_plus <<"\n";
-// 	    std::cout<<"Sigma Quaternion["<<i<<"]:\n"<<sig_q[i].x()<<" "<<sig_q[i].y()<<" "<<sig_q[i].z()<<" "<<sig_q[i].w()<<"\n";
+	    
 	    /** Attitude quaternion dynamic matrix Omega **/
 	    Omega(&(sig_q[i]), &(u_plus), dt);
 	    
@@ -356,7 +343,6 @@ namespace filter
 	    /** Vectorial part of a quaternion **/
  	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
 	    sig_point.col(i).block<NUMAXIS,1>(0,0) = f*(vectorq/(a+e_q[i].w()));
-//   	    std::cout<<"sig_point.col (after propagation)("<<i<<"):\n"<<sig_point.col(i)<<"\n";
 	}
 	
 	/** Predicted mean **/
@@ -367,7 +353,6 @@ namespace filter
 	sumvar = (lambda * sig_point.col(0))+(0.5*sumvar);
 	x = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
-	std::cout<<"State vector\n"<<x<<"\n";
 	
 	/** Predicted covariance **/
 	for (i=1; i<SIGPOINTSIZE; i++)
@@ -377,11 +362,13 @@ namespace filter
 	
 	Px = (1/(UKFSTATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
 	
-// 	std::cout<<"State covariance\n"<<Px<<"\n";
 	
 	return;
     }
     
+    /**
+    * @brief Performs the update (measurement and correction) step of the filter.
+    */
     void ukf::update(Eigen::Matrix< double, NUMAXIS , 1  >* acc, Eigen::Matrix< double, NUMAXIS , 1  >* mag)
     {
 	register int i;
@@ -401,7 +388,6 @@ namespace filter
 	for (i=0;i<SIGPOINTSIZE;i++)
 	{
 	    gamma.col(i) = sig_q[i]*r1;
-// 	    std::cout<<"gamma.col("<<i<<"):\n"<<gamma.col(i)<<"\n";
 	    
 	}
 	
@@ -423,7 +409,6 @@ namespace filter
 	
 	Pzz = (1/(UKFSTATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
 	
-	std::cout<<"Pzz:\n"<<Pzz<<"\n";
 	
 	/** Update using Accelerometers **/
 	euler[0] = (double) asin((double)(*acc)[1]/ (double)acc->norm()); // Roll
@@ -439,11 +424,9 @@ namespace filter
 
 	/** Measurement vector **/
 	z_r = rotation * r1;
-	std::cout<<"z_r\n"<<z_r<<"\n";
 	
 	/** Innovation covariance **/
 	Pnu = Pzz + R;
-	std::cout<<"Pnu:\n"<<Pnu<<"\n";
 	
 	/** Cross-correlation matrix **/	
 	for (i=1; i<SIGPOINTSIZE; i++)
@@ -455,12 +438,10 @@ namespace filter
 	/** Compute the Kalman Gain **/
 	K = Pxz * Pnu.inverse();
 	
-	std::cout<<"K:\n"<<K<<"\n";
 	
 	/** Innovation in the measurement **/
 	Nu = z_r - z_e;
 	
-	std::cout<<"Nu:\n"<<Nu<<"\n";
 	
 	/** Correction of the mean value (state)**/
 	x = x + K*Nu;
@@ -475,8 +456,6 @@ namespace filter
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 
 	at_q = rotation * sig_q[0];
-
-	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
 	
 	/** Set to zero for the next propagation **/
 	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
@@ -484,6 +463,9 @@ namespace filter
     }
 
 
+    /**
+    * @brief Performs the update step of the filter. Only update the attitude quaternion from a given rotation in rodrigues parameter form
+    */
     void ukf::attitudeUpdate()
     {
 	
@@ -496,9 +478,6 @@ namespace filter
 	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
 
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
-	
-// 	std::cout <<" SquaredNorm: "<<(x.block<NUMAXIS,1>(0,0)).squaredNorm() <<"\n";
-// 	std::cout<<"rotation:\n"<<rotation.x()<<" "<<rotation.y()<<" "<<rotation.z()<<" "<<rotation.w()<<"\n";
 
 	at_q = rotation * sig_q[0];
 
