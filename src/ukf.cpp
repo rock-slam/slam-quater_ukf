@@ -399,7 +399,7 @@ namespace filter
 	sumvar = (lambda * gamma.col(0))+(0.5*sumvar);
 	z_e = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
-	std::cout<<"z_e\n"<<z_e<<"\n";
+// 	std::cout<<"z_e\n"<<z_e<<"\n";
 	
 	/** Predicted covariance of the observation **/
 	for (i=1; i<SIGPOINTSIZE; i++)
@@ -415,7 +415,7 @@ namespace filter
 	euler[1] = (double)-atan((*acc)[0]/(*acc)[2]); //Pitch
 	euler[2] = (double) sig_q[0].toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
 	
-	std::cout<<"Measurement euler angles: "<<euler(0)*R2D<<" "<<euler(1)*R2D<<" "<<euler(2)*R2D<<"\n";
+// 	std::cout<<"Measurement euler angles: "<<euler(0)*R2D<<" "<<euler(1)*R2D<<" "<<euler(2)*R2D<<"\n";
 	
 	/** Compute quaternion from euler angles **/
 	rotation = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
@@ -481,7 +481,7 @@ namespace filter
 
 	at_q = rotation * sig_q[0];
 
-	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
+// 	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
 
 	/** Set to zero for the next propagation **/
 	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
