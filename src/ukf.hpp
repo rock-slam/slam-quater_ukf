@@ -20,7 +20,7 @@ namespace filter
     #define ERROR	-1  /**< Integer value in order to return when an error occured. */
     #endif
 
-    /** IKF constant parameters **/
+    /** UKF constant parameters **/
     #ifndef UKFSTATEVECTORSIZE
     #define UKFSTATEVECTORSIZE 6 /**< Number of variables of the vector state-space representation **/
     #endif
