@@ -17,24 +17,26 @@ void quater_mult (Eigen::Quaternion <double> *q1, Eigen::Quaternion <double> *q2
 }
 int main(int argc, char** argv)
 {
-	filter::ukf myukf;
+        using namespace filter;
+
+	ukf myukf;
 	register int i;
 	Eigen::Quaternion <double> quater;
-	Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
-	Eigen::Matrix <double,NUMAXIS,NUMAXIS> L;
-	Eigen::Matrix <double,NUMAXIS,1> mivector;
+	Eigen::Matrix <Eigen::Quaternion <double>, ukf::SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
+	Eigen::Matrix <double,ukf::NUMAXIS,ukf::NUMAXIS> L;
+	Eigen::Matrix <double,ukf::NUMAXIS,1> mivector;
 	Eigen::Matrix3d a;
-	Eigen::Matrix <double, NUMAXIS, 1> euler;
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> euler;
 	
-	Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> x_0; /**< Initial state vector */
-	Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> vector; /**< Initial state vector */
-	Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
-	Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> P_0; /**< Initial State covariance matrix */
+	Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE,1> x_0; /**< Initial state vector */
+	Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE,1> vector; /**< Initial state vector */
+	Eigen::Matrix <double,ukf::NUMAXIS,1> gtilde; /**< gravitation acceleration */
+	Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> P_0; /**< Initial State covariance matrix */
 	Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
-	Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
-	Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
-	Eigen::Matrix <double,NUMAXIS, 1>  u;
-	Eigen::Matrix <double,NUMAXIS, 1>  v;
+	Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	Eigen::Matrix <double,ukf::NUMAXIS, ukf::NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
+	Eigen::Matrix <double,ukf::NUMAXIS, 1>  u;
+	Eigen::Matrix <double,ukf::NUMAXIS, 1>  v;
 	
 	
 	mivector << 1, -4, 5;
@@ -70,7 +72,7 @@ int main(int argc, char** argv)
 	e_q[10].y() = 0.5;
 	e_q[10].z() = 0.6;
 	
-	for (i=0; i<SIGPOINTSIZE; i++)
+	for (i=0; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    std::cout << "Array("<<i<<") of quaternions"<< e_q[i].w() << "\n";
 	}
@@ -85,11 +87,11 @@ int main(int argc, char** argv)
 	
 	std::cout << "quater2RotationMatrix:\n"<< quater.toRotationMatrix() <<"\n";
 	
-	Eigen::Transform <double, NUMAXIS, NUMAXIS> trans(quater);
+	Eigen::Transform <double, ukf::NUMAXIS, ukf::NUMAXIS> trans(quater);
 	
 	std::cout << "transform\n"<< trans.matrix() <<"\n";
 	
-	std::cout << "transform mivector\n"<<mivector<<"\n"<< trans.matrix().block<NUMAXIS, NUMAXIS>(0,0)*mivector <<"\n";
+	std::cout << "transform mivector\n"<<mivector<<"\n"<< trans.matrix().block<ukf::NUMAXIS, ukf::NUMAXIS>(0,0)*mivector <<"\n";
 	
 	std::cout << "transform mivector\n"<<mivector<<"\n con quater\n"<< quater*mivector <<"\nsize = "<<(quater*mivector).size()<<"\n";
 	
@@ -118,7 +120,7 @@ int main(int argc, char** argv)
 	R << 0.0002, 0.00, 0.00,
 	    0.00, 0.0002, 0.00,
 	    0.00, 0.00, 0.0002;
-	u<< (10*D2R), (10*D2R), (10*D2R);
+	u<< (10*M_PI/180.00), (10*M_PI/180.00), (10*M_PI/180.00);
 	
 	myukf.Init(&x_0, &P_0, &Q, &R, &at_q,(double)1.00, (double)4.00, 1, gtilde[2]);
 	
@@ -135,7 +137,7 @@ int main(int argc, char** argv)
 	std::cout << "Enter";
 	std::cin >> i;
 	
-	u<< (10*D2R), (10*D2R), (10*D2R);
+	u<< (10*M_PI/180.00), (10*M_PI/180.00), (10*M_PI/180.00);
 	
 	/** LUNCH THE FILTER **/
 	myukf.predict(&u, 0.1);
