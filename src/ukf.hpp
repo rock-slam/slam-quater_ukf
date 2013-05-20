@@ -12,89 +12,45 @@ namespace filter
     
     using namespace Eigen;
 
-    /** General defines **/
-    #ifndef OK
-    #define OK	0  /**< Integer value in order to return when everything is all right. */
-    #endif
-    #ifndef ERROR
-    #define ERROR	-1  /**< Integer value in order to return when an error occured. */
-    #endif
-
-    /** UKF constant parameters **/
-    #ifndef UKFSTATEVECTORSIZE
-    #define UKFSTATEVECTORSIZE 6 /**< Number of variables of the vector state-space representation **/
-    #endif
-    #ifndef QUATERSIZE
-    #define QUATERSIZE 4 /**< Number of parameters of a quaternion **/
-    #endif
-    #ifndef SIGPOINTSIZE
-    #define SIGPOINTSIZE (2*UKFSTATEVECTORSIZE) + 1 /**< Number of Sigma Points **/
-    #endif
-
-    #ifndef PI
-    #define PI 3.141592653589793238462643383279502884197169399375105820974944592307816406286 /**< Pi Number */
-    #endif
-    #define EAST 1 /**< EAST is 1 and means positive magnetic declination **/
-    #define WEST 2 /**< WEST is 2 and means negative magnetic declination **/
-
-    #define D2R PI/180.00 /**< Convert degree to radian **/
-    #define R2D 180.00/PI /**< Convert radian to degree **/
-
-    /** Sensors constant parameters **/
-    #ifndef NUMAXIS
-    #define NUMAXIS 3 /**< Number of axis sensed by the sensors **/
-    #endif
-
-    /** WGS-84 ellipsoid constants (Nominal Gravity Model and Earth angular velocity) **/
-    #ifndef Re
-    #define Re	6378137 /**< Equatorial radius in meters **/
-    #endif
-    #ifndef Rp
-    #define Rp	6378137 /**< Polar radius in meters **/
-    #endif
-    #ifndef ECC
-    #define ECC  0.0818191908426 /**< First eccentricity **/
-    #endif
-    #ifndef GRAVITY
-    #define GRAVITY 9.79766542 /**< Mean value of gravity value in m/s^2 **/
-    #endif
-    #ifndef GWGS0
-    #define GWGS0 9.7803267714 /**< Gravity value at the equator in m/s^2 **/
-    #endif
-    #ifndef GWGS1
-    #define GWGS1 0.00193185138639 /**< Gravity formula constant **/
-    #endif
-    #ifndef EARTHW
-    #define EARTHW  7.292115e-05 /**< Earth angular velocity in rad/s **/
-    #endif
-
-
-  
     class ukf
     {
+        public:
+            static const int  UKFSTATEVECTORSIZE = 6; /** Number of variables of the vector state-space representation **/
+            static const int  QUATERSIZE = 4; /** Number of parameters of a quaternion **/
+            static const int  SIGPOINTSIZE =  (2*ukf::UKFSTATEVECTORSIZE) + 1; /** Number of Sigma Points **/
+
+            /** Sensors constant parameters **/
+            static const int  NUMAXIS = 3; /** Number of axis sensed by the sensors **/
+
+            /** UKF constant parameters **/
+            enum DECLINATION_CONSTS {
+                EAST = 1, /** EAST is 1 and means positive magnetic declination **/
+                WEST = 2 /** WEST is 2 and means negative magnetic declination **/
+            };
+
 	
 	/**
 	 * Filters members
 	 **/
 	private:
 	    double f, a, lambda; /**< Parameters for the Unscented KF  */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> x; /**< State vector */
-	    Eigen::Matrix <double,NUMAXIS,1> gtilde; /**< gravitation acceleration */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Px; /**< State covariance matrix */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE,1> x; /**< State vector */
+	    Eigen::Matrix <double,ukf::NUMAXIS,1> gtilde; /**< gravitation acceleration */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> Px; /**< State covariance matrix */
 	    Eigen::Quaternion <double> at_q;  /**< Attitude quaternion. Note the order of the arguments: the real w coefficient first, while internally the coefficients are stored in the following order: [x, y, z, w] */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
-	    Eigen::Matrix <double,NUMAXIS, NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, SIGPOINTSIZE> sig_point; /**< Sigma points for SPKF */
-	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
-	    Eigen::Matrix <Eigen::Quaternion <double>, SIGPOINTSIZE, 1> sig_q; /**< Sigma point quaternions */
-	    Eigen::Matrix <double,NUMAXIS, SIGPOINTSIZE> gamma; /**< Observation in the model */
-	    Eigen::Matrix <double,NUMAXIS, 1> z_e; /**<Predictive observation */ 
-	    Eigen::Matrix <double,NUMAXIS, 1> z_r; /**<Measurement of the observation */
-	    Eigen::Matrix <double,NUMAXIS, 1> Nu; /**< Innovation */
-	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pzz; /** Output covariance matrix */
-	    Eigen::Matrix <double,NUMAXIS, NUMAXIS> Pnu; /** Innovation covariance matrix */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, NUMAXIS> Pxz; /** Cross-correlation matrix */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE, NUMAXIS> K; /**< Kalman Gain sometimes also called W */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> Q; /**< Process noise covariance matrix */
+	    Eigen::Matrix <double,ukf::NUMAXIS, ukf::NUMAXIS>  R; /**< Measurements noise variance and covar matrix */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::SIGPOINTSIZE> sig_point; /**< Sigma points for SPKF */
+	    Eigen::Matrix <Eigen::Quaternion <double>, ukf::SIGPOINTSIZE, 1> e_q; /**< Error quaternions */
+	    Eigen::Matrix <Eigen::Quaternion <double>, ukf::SIGPOINTSIZE, 1> sig_q; /**< Sigma point quaternions */
+	    Eigen::Matrix <double,ukf::NUMAXIS, ukf::SIGPOINTSIZE> gamma; /**< Observation in the model */
+	    Eigen::Matrix <double,ukf::NUMAXIS, 1> z_e; /**<Predictive observation */ 
+	    Eigen::Matrix <double,ukf::NUMAXIS, 1> z_r; /**<Measurement of the observation */
+	    Eigen::Matrix <double,ukf::NUMAXIS, 1> Nu; /**< Innovation */
+	    Eigen::Matrix <double,ukf::NUMAXIS, ukf::NUMAXIS> Pzz; /** Output covariance matrix */
+	    Eigen::Matrix <double,ukf::NUMAXIS, ukf::NUMAXIS> Pnu; /** Innovation covariance matrix */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::NUMAXIS> Pxz; /** Cross-correlation matrix */
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE, ukf::NUMAXIS> K; /**< Kalman Gain sometimes also called W */
 	
 	public: 
 	    
@@ -107,7 +63,7 @@ namespace filter
 	    * @return State Vector
 	    *
 	    */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,1> getState();
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE,1> getState();
 
 
 	    /**
@@ -128,7 +84,7 @@ namespace filter
 	    * @return Current orientation in Euler angles.
 	    *
 	    */
-	    Eigen::Matrix <double, NUMAXIS, 1> getEuler();
+	    Eigen::Matrix <double, ukf::NUMAXIS, 1> getEuler();
 
 	    /**
 	    * @brief Gets Noise covariance matrix
@@ -138,7 +94,7 @@ namespace filter
 	    * @return Matrix P of the covariance of the state vector
 	    *
 	    */
-	    Eigen::Matrix <double,UKFSTATEVECTORSIZE,UKFSTATEVECTORSIZE> getCovariance();
+	    Eigen::Matrix <double,ukf::UKFSTATEVECTORSIZE,ukf::UKFSTATEVECTORSIZE> getCovariance();
 
 	    /**
 	    * @brief This function Initilize Attitude
@@ -152,7 +108,7 @@ namespace filter
 	    * @return OK is everything all right. ERROR on other cases.
 	    *
 	    */
-	    int setAttitude (Eigen::Quaternion <double> *initq);
+	    bool setAttitude (Eigen::Quaternion <double> *initq);
 
 	    	    
 	    /**
@@ -176,7 +132,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void Init (Matrix <double,UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> *P_0, Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> *Q, Eigen::Matrix <double, NUMAXIS, NUMAXIS> *R,
+	    void Init (Matrix <double,ukf::UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> *P_0, Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> *Q, Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS> *R,
 		       Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g);
 	    
 	    /**
@@ -208,7 +164,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void SubstractEarthRotation(Eigen::Matrix <double, NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude);
+	    void SubstractEarthRotation(Eigen::Matrix <double, ukf::NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude);
       
 	     /**
 	    * @brief Discrete-time quaternion kinematic equation
@@ -225,7 +181,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void Omega(Eigen::Quaternion< double >* quat, Eigen::Matrix< double, NUMAXIS , 1  >* angvelo, double dt);
+	    void Omega(Eigen::Quaternion< double >* quat, Eigen::Matrix< double, ukf::NUMAXIS , 1  >* angvelo, double dt);
 
 	    
 	    /**
@@ -242,7 +198,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void predict(Eigen::Matrix <double,NUMAXIS,1>  *u, double dt);
+	    void predict(Eigen::Matrix <double,ukf::NUMAXIS,1>  *u, double dt);
 	    
 	    
 	    
@@ -259,7 +215,7 @@ namespace filter
 	    * @return void
 	    *
 	    */
-	    void update(Eigen::Matrix <double,NUMAXIS,1>  *acc, Eigen::Matrix <double,NUMAXIS,1>  *mag);
+	    void update(Eigen::Matrix <double,ukf::NUMAXIS,1>  *acc, Eigen::Matrix <double,ukf::NUMAXIS,1>  *mag);
 	    
 	    /**
 	    * @brief Performs attitude quaternion update.

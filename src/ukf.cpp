@@ -22,6 +22,31 @@
 #include <Eigen/Cholesky> /**< Cholesky module **/
 #include "ukf.hpp" /**< Unscented Kalman Filter */
 
+/** WGS-84 ellipsoid constants (Nominal Gravity Model and Earth angular velocity) **/
+#ifndef Re
+#define Re	6378137 /**< Equatorial radius in meters **/
+#endif
+#ifndef Rp
+#define Rp	6378137 /**< Polar radius in meters **/
+#endif
+#ifndef ECC
+#define ECC  0.0818191908426 /**< First eccentricity **/
+#endif
+#ifndef GRAVITY
+#define GRAVITY 9.79766542 /**< Mean value of gravity value in m/s^2 **/
+#endif
+#ifndef GWGS0
+#define GWGS0 9.7803267714 /**< Gravity value at the equator in m/s^2 **/
+#endif
+#ifndef GWGS1
+#define GWGS1 0.00193185138639 /**< Gravity formula constant **/
+#endif
+#ifndef EARTHW
+#define EARTHW  7.292115e-05 /**< Earth angular velocity in rad/s **/
+#endif
+
+
+
 namespace filter
 {
     /** Namespaces to use **/
@@ -33,7 +58,7 @@ namespace filter
     /**
     * @brief This function Initilize the vectors and matrix of the UKF   
     */
-    void ukf::Init(Matrix <double,UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE  >* P_0, Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE  > *Q, Eigen::Matrix< double, NUMAXIS , NUMAXIS  > *R, Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g)
+    void ukf::Init(Matrix <double,ukf::UKFSTATEVECTORSIZE,1> *x_0, Eigen::Matrix< double, ukf::UKFSTATEVECTORSIZE , ukf::UKFSTATEVECTORSIZE  >* P_0, Eigen::Matrix< double, ukf::UKFSTATEVECTORSIZE , ukf::UKFSTATEVECTORSIZE  > *Q, Eigen::Matrix< double, ukf::NUMAXIS , ukf::NUMAXIS  > *R, Eigen::Quaternion <double> *at_q, double a, double f, double lambda, double g)
     {
 	
       /** Gravitation acceleration **/
@@ -43,7 +68,7 @@ namespace filter
       this->a = a;
       this->f = f;
       this->lambda = lambda;
-      \
+      
       /** Set the state vector **/
       this->x = *x_0;
       
@@ -71,25 +96,25 @@ namespace filter
     /**
     * @brief This function Initilize Attitude
     */
-    int ukf::setAttitude(Eigen::Quaternion< double > *initq)
+    bool ukf::setAttitude(Eigen::Quaternion< double > *initq)
     {
       if (initq != NULL)
       {
 	/** Initial orientation **/
 	 this->at_q = (*initq);
 	
-	return OK;
+	return true;
       }
       
-      return ERROR;
+      return false;
     }
     
     /**
     * @brief Gets the current orientation in Euler angles (rad)
     */
-    Eigen::Matrix< double, NUMAXIS , 1  > ukf::getEuler()
+    Eigen::Matrix< double, ukf::NUMAXIS , 1  > ukf::getEuler()
     {
-      Eigen::Matrix <double, NUMAXIS, 1> euler;
+      Eigen::Matrix <double, ukf::NUMAXIS, 1> euler;
       
       Vector3d e = Eigen::Matrix3d(at_q).eulerAngles(2,1,0);
        euler(0) = e[2]; 
@@ -110,7 +135,7 @@ namespace filter
     /**
     * @brief Gets the current state vector of the filter
     */
-    Eigen::Matrix< double, UKFSTATEVECTORSIZE , 1  > ukf::getState()
+    Eigen::Matrix< double, ukf::UKFSTATEVECTORSIZE , 1  > ukf::getState()
     {
       return x;
 
@@ -119,7 +144,7 @@ namespace filter
     /**
     * @brief Gets Noise covariance matrix
     */
-    Eigen::Matrix< double, UKFSTATEVECTORSIZE , UKFSTATEVECTORSIZE> ukf::getCovariance()
+    Eigen::Matrix< double, ukf::UKFSTATEVECTORSIZE , ukf::UKFSTATEVECTORSIZE> ukf::getCovariance()
     {
 	return Px;
     }
@@ -146,9 +171,9 @@ namespace filter
     /**
     * @brief Substract the Earth rotation from the gyroscopes readout
     */
-    void ukf::SubstractEarthRotation(Eigen::Matrix <double, NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude)
+    void ukf::SubstractEarthRotation(Eigen::Matrix <double, ukf::NUMAXIS, 1> *u, Eigen::Quaternion <double> *qb_g, double latitude)
     {
-      Eigen::Matrix <double, NUMAXIS, 1> v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /**< vector of earth rotation components expressed in the geografic frame according to the latitude **/
+      Eigen::Matrix <double, ukf::NUMAXIS, 1> v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /**< vector of earth rotation components expressed in the geografic frame according to the latitude **/
 
       /** Compute the v vector expressed in the body frame **/
       v = (*qb_g) * v;
@@ -162,19 +187,19 @@ namespace filter
     /**
      * @brief Discrete-time quaternion kinematic equation
      */
-    void ukf::Omega(Eigen::Quaternion< double >* quat, Eigen::Matrix< double, NUMAXIS , 1  >* angvelo, double dt)
+    void ukf::Omega(Eigen::Quaternion< double >* quat, Eigen::Matrix< double, ukf::NUMAXIS , 1  >* angvelo, double dt)
     {
 
 	register int j, l;
 	double auxvar;
-	Eigen::Matrix <double, NUMAXIS, NUMAXIS> Crossproduct;
-	Eigen::Matrix <double, QUATERSIZE, QUATERSIZE> Omega;
-	Eigen::Matrix< double, QUATERSIZE , 1  > q;
-	Eigen::Matrix <double, NUMAXIS, NUMAXIS> Upper;
-	Eigen::Matrix <double, NUMAXIS, 1> psi;
+	Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS> Crossproduct;
+	Eigen::Matrix <double, ukf::QUATERSIZE, ukf::QUATERSIZE> Omega;
+	Eigen::Matrix< double, ukf::QUATERSIZE , 1  > q;
+	Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS> Upper;
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> psi;
 	
-	Crossproduct = Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Zero();
-	Omega = Eigen::Matrix <double, QUATERSIZE, QUATERSIZE>::Zero();
+	Crossproduct = Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS>::Zero();
+	Omega = Eigen::Matrix <double, ukf::QUATERSIZE, ukf::QUATERSIZE>::Zero();
 
 	/** If angular velocity is not zero **/
 	if ((double)(*angvelo).norm() != 0.00)
@@ -200,12 +225,12 @@ namespace filter
 	    Crossproduct (2,1) = psi(0);
 
 	    /** Upper matrix **/
-	    Upper = (double)cos(0.5*(*angvelo).norm()*(dt)) * Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Identity() - Crossproduct;
+	    Upper = (double)cos(0.5*(*angvelo).norm()*(dt)) * Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS>::Identity() - Crossproduct;
 
 	    /** Create the omega transition matrix **/
-	    for (j=0; j<QUATERSIZE; j++) /** Columns **/
+	    for (j=0; j<ukf::QUATERSIZE; j++) /** Columns **/
 	    {
-		for (l=0; l<QUATERSIZE; l++) /** Rows **/
+		for (l=0; l<ukf::QUATERSIZE; l++) /** Rows **/
 		{
 		if (l<3)
 		{
@@ -241,21 +266,21 @@ namespace filter
     /**
     * @brief Performs the prediction step of the filter.
     */
-    void ukf::predict(Eigen::Matrix< double, NUMAXIS , 1  >* u, double dt)
+    void ukf::predict(Eigen::Matrix< double, ukf::NUMAXIS , 1  >* u, double dt)
     {
 	register int i;
 	double q4; /**< scalar part of a quaternion **/
-	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
-	Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> M;
+	Eigen::Matrix <double, ukf::QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
+	Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> M;
 	Eigen::Quaternion <double> auxq; /**< Auxiliar quaternion for operations **/
-	Eigen::Matrix <double, NUMAXIS, 1> p_sig_point; /**< Vector containing the rodrigues parameters , upper part of the state vector and the sigma points  **/
-	Eigen::Matrix <double, NUMAXIS, 1> u_plus; /**< Vector of corrected angular velocity **/
-	Eigen::Matrix <double, UKFSTATEVECTORSIZE, 1> sumvar = Eigen::Matrix <double, UKFSTATEVECTORSIZE, 1>::Zero(); /**< Summation variable **/
-	Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE> sumM = Eigen::Matrix <double, UKFSTATEVECTORSIZE, UKFSTATEVECTORSIZE>::Zero(); /**< Summation matrix **/
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> p_sig_point; /**< Vector containing the rodrigues parameters , upper part of the state vector and the sigma points  **/
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> u_plus; /**< Vector of corrected angular velocity **/
+	Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, 1> sumvar = Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, 1>::Zero(); /**< Summation variable **/
+	Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE> sumM = Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::UKFSTATEVECTORSIZE>::Zero(); /**< Summation matrix **/
 	
 	/** Compute the sigma points **/
-// 	std::cout<<"(Px + Q):\n"<<(Px + Q)<<"\n (n+lambda)"<<(UKFSTATEVECTORSIZE+lambda)<<"\n";
-	M = (UKFSTATEVECTORSIZE+lambda)*(Px + Q);
+// 	std::cout<<"(Px + Q):\n"<<(Px + Q)<<"\n (n+lambda)"<<(ukf::UKFSTATEVECTORSIZE+lambda)<<"\n";
+	M = (ukf::UKFSTATEVECTORSIZE+lambda)*(Px + Q);
 // 	std::cout<<"M:\n"<<M<<"\n";
 	Eigen::LLT<Eigen::MatrixXd> lltOfM(M);
 	M = lltOfM.matrixL(); //square root of a semi-definited positive matrix 
@@ -264,14 +289,14 @@ namespace filter
 
 	sig_point.col(0) = x;
 	
-	for (i=1; i<=UKFSTATEVECTORSIZE; i++)
+	for (i=1; i<=ukf::UKFSTATEVECTORSIZE; i++)
 	{
 	    sig_point.col(i) = x + M.col(i-1);
 	}
 	
-	for (i=(UKFSTATEVECTORSIZE+1); i<SIGPOINTSIZE; i++)
+	for (i=(ukf::UKFSTATEVECTORSIZE+1); i<ukf::SIGPOINTSIZE; i++)
 	{
-	    sig_point.col(i) = x - M.col(i-(UKFSTATEVECTORSIZE+1));
+	    sig_point.col(i) = x - M.col(i-(ukf::UKFSTATEVECTORSIZE+1));
 	}
 	
 	/** Calculate Error Quaternion **/
@@ -280,10 +305,10 @@ namespace filter
 	
 	e_q[0] = auxq; //Error quaternion (0) is the identity quaternion.
 	
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    /** Calculate **/
-	    p_sig_point = (sig_point.col(i)).block<NUMAXIS,1>(0,0);
+	    p_sig_point = (sig_point.col(i)).block<ukf::NUMAXIS,1>(0,0);
 	    
 	    q4 = ((-a * p_sig_point.squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*p_sig_point.squaredNorm()))/(pow(f,2)+p_sig_point.squaredNorm());
 	    vectorq = (1/f)*(a + q4) * p_sig_point;
@@ -296,24 +321,24 @@ namespace filter
 	    e_q[i] = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 	    
 //  	    std::cout<<"Error Quaternion["<<i<<"]:\n"<<e_q[i].x()<<" "<<e_q[i].y()<<" "<<e_q[i].z()<<" "<<e_q[i].w()<<"\n";
-//  	    e_q.block<NUMAXIS,NUMAXIS>(0,0).col(i) = vectorq;
+//  	    e_q.block<ukf::NUMAXIS,ukf::NUMAXIS>(0,0).col(i) = vectorq;
 //  	    e_q.col(i)[3] = q4;
 	}
 	
 	/** Compute sigma point quaternions from error quaternions **/
  	sig_q[0] = at_q;
 	
-	for (i=1;i<SIGPOINTSIZE;i++)
+	for (i=1;i<ukf::SIGPOINTSIZE;i++)
 	{
 	    sig_q[i] = e_q[i]*at_q;
 	}
 	
 
 	/** Propagate quaternions forward (sigma point quaternions) u is the vector with the angular velocities **/
-	for (i=0; i<SIGPOINTSIZE;i++)
+	for (i=0; i<ukf::SIGPOINTSIZE;i++)
 	{
 	    /** The estimated angular velocities are given by substracting the bias **/
- 	    u_plus = *u - (sig_point.col(i)).block<NUMAXIS,1>(3,0);
+ 	    u_plus = *u - (sig_point.col(i)).block<ukf::NUMAXIS,1>(3,0);
 	    
 	    /** Attitude quaternion dynamic matrix Omega **/
 	    Omega(&(sig_q[i]), &(u_plus), dt);
@@ -336,31 +361,31 @@ namespace filter
 	
 	
 	/** Compute the sigma points **/
-	sig_point.col(0).block<NUMAXIS,1>(0,0) << 0.00, 0.00, 0.00;
+	sig_point.col(0).block<ukf::NUMAXIS,1>(0,0) << 0.00, 0.00, 0.00;
 	
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    /** Vectorial part of a quaternion **/
  	    vectorq << e_q[i].x(), e_q[i].y(), e_q[i].z();
-	    sig_point.col(i).block<NUMAXIS,1>(0,0) = f*(vectorq/(a+e_q[i].w()));
+	    sig_point.col(i).block<ukf::NUMAXIS,1>(0,0) = f*(vectorq/(a+e_q[i].w()));
 	}
 	
 	/** Predicted mean **/
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    sumvar += sig_point.col(i);
 	}
 	sumvar = (lambda * sig_point.col(0))+(0.5*sumvar);
-	x = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
+	x = (1/(ukf::UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
 	
 	/** Predicted covariance **/
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    sumM += ((sig_point.col(i)-x) * (sig_point.col(i)-x).transpose());
 	}
 	
-	Px = (1/(UKFSTATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
+	Px = (1/(ukf::UKFSTATEVECTORSIZE + lambda))* (lambda*((sig_point.col(0)-x) * (sig_point.col(0)-x).transpose()) + (0.5 * sumM)) + Q;
 	
 	
 	return;
@@ -369,15 +394,15 @@ namespace filter
     /**
     * @brief Performs the update (measurement and correction) step of the filter.
     */
-    void ukf::update(Eigen::Matrix< double, NUMAXIS , 1  >* acc, Eigen::Matrix< double, NUMAXIS , 1  >* mag)
+    void ukf::update(Eigen::Matrix< double, ukf::NUMAXIS , 1  >* acc, Eigen::Matrix< double, ukf::NUMAXIS , 1  >* mag)
     {
 	register int i;
 	double q4; /**< scalar part of a quaternion **/
-	Eigen::Matrix <double, NUMAXIS, 1> r1, euler;
-	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
-	Eigen::Matrix <double, NUMAXIS, 1> sumvar = Eigen::Matrix <double, NUMAXIS, 1>::Zero(); /**< Summation variable **/
-	Eigen::Matrix <double, NUMAXIS, NUMAXIS> sumM = Eigen::Matrix <double, NUMAXIS, NUMAXIS>::Zero(); /**< Summation matrix **/
-	Eigen::Matrix <double, UKFSTATEVECTORSIZE, NUMAXIS> sumPxz = Eigen::Matrix <double, UKFSTATEVECTORSIZE, NUMAXIS>::Zero(); /**< Summation matrix **/
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> r1, euler;
+	Eigen::Matrix <double, ukf::QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
+	Eigen::Matrix <double, ukf::NUMAXIS, 1> sumvar = Eigen::Matrix <double, ukf::NUMAXIS, 1>::Zero(); /**< Summation variable **/
+	Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS> sumM = Eigen::Matrix <double, ukf::NUMAXIS, ukf::NUMAXIS>::Zero(); /**< Summation matrix **/
+	Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::NUMAXIS> sumPxz = Eigen::Matrix <double, ukf::UKFSTATEVECTORSIZE, ukf::NUMAXIS>::Zero(); /**< Summation matrix **/
 	Eigen::Quaternion <double> rotation;
 	
 	
@@ -385,29 +410,29 @@ namespace filter
 	r1 << 1,1,1;
 	
 	/** Compute observation from the state prediction (from the propagated sigma point quaternion)) **/
-	for (i=0;i<SIGPOINTSIZE;i++)
+	for (i=0;i<ukf::SIGPOINTSIZE;i++)
 	{
 	    gamma.col(i) = sig_q[i]*r1;
 	    
 	}
 	
 	/** Predicted mean of the observation **/
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    sumvar += gamma.col(i);
 	}
 	sumvar = (lambda * gamma.col(0))+(0.5*sumvar);
-	z_e = (1/(UKFSTATEVECTORSIZE + lambda)) * sumvar;
+	z_e = (1/(ukf::UKFSTATEVECTORSIZE + lambda)) * sumvar;
 	
 // 	std::cout<<"z_e\n"<<z_e<<"\n";
 	
 	/** Predicted covariance of the observation **/
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    sumM += ((gamma.col(i)-z_e) * (gamma.col(i)-z_e).transpose());
 	}
 	
-	Pzz = (1/(UKFSTATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
+	Pzz = (1/(ukf::UKFSTATEVECTORSIZE + lambda)) * (lambda*((gamma.col(0)-z_e) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumM));
 	
 	
 	/** Update using Accelerometers **/
@@ -429,11 +454,11 @@ namespace filter
 	Pnu = Pzz + R;
 	
 	/** Cross-correlation matrix **/	
-	for (i=1; i<SIGPOINTSIZE; i++)
+	for (i=1; i<ukf::SIGPOINTSIZE; i++)
 	{
 	    sumPxz += ((sig_point.col(i)-x) * (gamma.col(i)-z_e).transpose());
 	}
-	Pxz = (1/(UKFSTATEVECTORSIZE + lambda))*(((sig_point.col(0)-x) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumPxz));
+	Pxz = (1/(ukf::UKFSTATEVECTORSIZE + lambda))*(((sig_point.col(0)-x) * (gamma.col(0)-z_e).transpose()) + (0.5 * sumPxz));
 	
 	/** Compute the Kalman Gain **/
 	K = Pxz * Pnu.inverse();
@@ -450,15 +475,15 @@ namespace filter
 	Px = Px - K*Pnu*K.transpose();
 	
 	/** Update the attitude quaternion using the state vector (rodrigues parameter)**/
-	q4 = ((-a * (x.block<NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<NUMAXIS,1>(0,0)).squaredNorm());
-	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
+	q4 = ((-a * (x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm());
+	vectorq = (1/f)*(a + q4) * x.block<ukf::NUMAXIS,1>(0,0);
 	
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 
 	at_q = rotation * sig_q[0];
 	
 	/** Set to zero for the next propagation **/
-	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
+	x.block<ukf::NUMAXIS,1>(0,0) = Eigen::Matrix <double, ukf::NUMAXIS, 1>::Zero();
 	
     }
 
@@ -470,12 +495,12 @@ namespace filter
     {
 	
 	double q4; /**< scalar part of a quaternion **/
-	Eigen::Matrix <double, QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
+	Eigen::Matrix <double, ukf::QUATERSIZE-1, 1> vectorq; /**< vectorial part of a quaternion **/
 	Eigen::Quaternion <double> rotation;
 
 	/** Update the attitude quaternion using the state vector (rodrigues parameter)**/
-	q4 = ((-a * (x.block<NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<NUMAXIS,1>(0,0)).squaredNorm());
-	vectorq = (1/f)*(a + q4) * x.block<NUMAXIS,1>(0,0);
+	q4 = ((-a * (x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm())+ f * sqrt(pow(f,2)+(1-pow(a,2))*(x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm()))/(pow(f,2)+(x.block<ukf::NUMAXIS,1>(0,0)).squaredNorm());
+	vectorq = (1/f)*(a + q4) * x.block<ukf::NUMAXIS,1>(0,0);
 
 	rotation = Eigen::Quaternion <double> (q4, vectorq[0], vectorq[1], vectorq[2]);
 
@@ -484,7 +509,7 @@ namespace filter
 // 	std::cout<<"at_q:\n"<<at_q.x()<<" "<<at_q.y()<<" "<<at_q.z()<<" "<<at_q.w()<<"\n";
 
 	/** Set to zero for the next propagation **/
-	x.block<NUMAXIS,1>(0,0) = Eigen::Matrix <double, NUMAXIS, 1>::Zero();
+	x.block<ukf::NUMAXIS,1>(0,0) = Eigen::Matrix <double, ukf::NUMAXIS, 1>::Zero();
     }
 
 
