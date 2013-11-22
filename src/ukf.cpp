@@ -20,6 +20,7 @@
 #include <Eigen/LU> /**< Lineal algebra of Eigen */
 #include <Eigen/SVD> /**< Singular Value Decomposition (SVD) of Eigen */
 #include <Eigen/Cholesky> /**< Cholesky module **/
+#include <base/Pose.hpp>
 #include "ukf.hpp" /**< Unscented Kalman Filter */
 
 /** WGS-84 ellipsoid constants (Nominal Gravity Model and Earth angular velocity) **/
@@ -116,7 +117,7 @@ namespace filter
     {
       Eigen::Matrix <double, ukf::NUMAXIS, 1> euler;
       
-      Vector3d e = Eigen::Matrix3d(at_q).eulerAngles(2,1,0);
+      Vector3d e = base::getEuler(at_q);
        euler(0) = e[2]; 
        euler(1) = e[1]; 
        euler(2) = e[0]; 
@@ -438,7 +439,7 @@ namespace filter
 	/** Update using Accelerometers **/
 	euler[0] = (double) asin((double)(*acc)[1]/ (double)acc->norm()); // Roll
 	euler[1] = (double)-atan((*acc)[0]/(*acc)[2]); //Pitch
-	euler[2] = (double) sig_q[0].toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
+	euler[2] = (double) base::getEuler(sig_q[0])[0];//Yaw
 	
 // 	std::cout<<"Measurement euler angles: "<<euler(0)*R2D<<" "<<euler(1)*R2D<<" "<<euler(2)*R2D<<"\n";
 	
